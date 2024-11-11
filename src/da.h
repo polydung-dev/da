@@ -29,81 +29,32 @@
 #endif
 
 /**
- * The rate at which the array grows ( +1 ).
+ * The rate at which the array grows.
  */
-#ifndef DA_SCALE_FACTOR
-#define DA_SCALE_FACTOR 1.5
+#ifndef DA_FACTOR
+#define DA_FACTOR 2
 #endif
 
 /**
- * The dynamic array object.
- *
- * @param         type	the type of the array element
+ * Additional bias to growth factor.
  */
-#define da_t(type)                                                            \
+#ifndef DA_BIAS
+#define DA_BIAS 0
+#endif
+
+/** Dynamic Array ************************************************************/
+
+/**
+ * The dynamic array object, these members should not be modified directly.
+ *
+ * @param         value_type	the type of the array element
+ */
+#define da_type(value_type)                                                   \
 struct {                                                                      \
-	type*  data;                                                          \
+	value_type*  data;                                                    \
 	size_t size;                                                          \
 	size_t capacity;                                                      \
 }
-
-/**
- * Type for "iterator".
- *
- * todo: "real" iterators, i.e. pointers
- *
- * @param         da	A dynamic array object.
- */
-#define da_iter_t(da) __typeof__((da).data[0])*
-
-/**
- * Access to the underlying array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_DATA(da)     (da).data
-
-/**
- * Number of elements in the array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_SIZE(da)     (da).size
-
-/**
- * Number of elements that can fit in the currently allocated array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_CAPACITY(da) (da).capacity
-
-/**
- * The first element in the array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_FRONT(da)    (da).data[0]
-
-/**
- * The last element in the array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_BACK(da)     (da).data[(da).size - 1]
-
-/**
- * Iterator pointing at the first element in the array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_BEGIN(da)    (da).data
-
-/**
- * Iterator point past the last element in the array.
- *
- * @param         da	A dynamic array object.
- */
-#define DA_END(da)      ((da).data + (da).size)
 
 /**
  * Allocates the initial chunk of memory for the array.
@@ -144,25 +95,147 @@ do {                                                                          \
 do {                                                                          \
 	free((da).data);                                                      \
 	(da).data = NULL;                                                     \
+	(da).size = 0;                                                        \
+	(da).capacity = 0;                                                    \
+} while (0)
+
+/** Element Access ***********************************************************/
+
+/**
+ * Array read with bounds checking.
+ *
+ * @param         da  	A dynamic array object.
+ * @param         idx	The index of the new element.
+ */
+#define DA_GET(da, idx)                                                       \
+	((idx) >= (da).size) ?                                                \
+	fprintf(stderr, "da: get: out of bounds\n"), exit(1), 0 :             \
+	(da).data[idx]
+
+/**
+ * Array write with bounds checking.
+ *
+ * @param         da  	A dynamic array object.
+ * @param         idx	An index into the array.
+ * @param         elem	The new value of element.
+ */
+#define DA_SET(da, idx, elem)                                                 \
+do {                                                                          \
+	if ((idx) >= (da).size) {                                             \
+		fprintf(stderr, "da: set: out of bounds\n");                  \
+		exit(1);                                                      \
+	}                                                                     \
+	(da).data[idx] = elem;                                                \
 } while (0)
 
 /**
- * Appends a new element to the dynamic array, resizing if necessary.
+ * The first element in the array.
  *
- * NOTE: If a resize occurs, all pointers will be invalidated..
+ * @param         da	A dynamic array object.
+ */
+#define DA_FRONT(da) (da).data[0]
+
+/**
+ * The last element in the array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_BACK(da) (da).data[(da).size - 1]
+
+/**
+ * Access to the underlying array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_DATA(da) (da).data
+
+/** Iterators ****************************************************************/
+
+/**
+ * Type for "iterator".
+ *
+ * @param         da	A dynamic array object.
+ */
+#define da_iter_type(da) __typeof__((da).data[0]) *
+
+/**
+ * Iterator pointing at the first element in the array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_BEGIN(da) (da).data
+
+/**
+ * Iterator pointint one past the last element in the array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_END(da) ((da).data + (da).size)
+
+/** Capacity *****************************************************************/
+
+/**
+ * Checks if the array is empty.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_EMPTY(da) ((da).size == 0)
+
+/**
+ * Number of elements in the array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_SIZE(da) (da).size
+
+/**
+ * Reserves additional space for the underlying array.
+ *
+ * If `sz` is not greater than the current capacity, this macro does nothing.
+ *
+ * NOTE: If `sz` is greater than the current capacity, all pointers and
+ * iterators will be invalidated.
+ *
+ * @param         da	A dynamic array object.
+ * @param         sz	The new capacity of the array.
+ */
+#define DA_RESERVE(da, sz)                                                    \
+do {                                                                          \
+	if ((sz) == 0) {                                                      \
+		fprintf(stderr, "da: reserve: size cannot be zero\n");        \
+		exit(1);                                                      \
+	}                                                                     \
+	/* reserve cannot shrink array */                                     \
+	if (sz <= (da).capacity) {                                            \
+		break;                                                        \
+	}                                                                     \
+	(da).data = realloc((da).data, (sz) * sizeof((da).data[0]));          \
+	if ((da).data == NULL) {                                              \
+		fprintf(stderr, "da: reserve: out of memory\n");              \
+		exit(1);                                                      \
+	}                                                                     \
+	/* new elements are left un-initialised */                            \
+	(da).capacity = (sz);                                                 \
+} while (0)
+
+/**
+ * Number of elements that can fit in the currently allocated array.
+ *
+ * @param         da	A dynamic array object.
+ */
+#define DA_CAPACITY(da) (da).capacity
+
+/** Modifiers ****************************************************************/
+
+/**
+ * Clears the array, setting the size to 0, without free'ing memory.
  *
  * @param         da  	A dynamic array object.
- * @param         elem	The object to insert into the array.
- *
- * @see	`DA_RESERVE`
  */
-#define DA_PUSH_BACK(da, elem)                                                \
+#define DA_CLEAR(da)                                                          \
 do {                                                                          \
-	if ((da).size == (da).capacity) {                                     \
-		DA_RESERVE(da, (size_t)((da).capacity * DA_SCALE_FACTOR) + 1);\
-	}                                                                     \
-	(da).data[(da).size] = (elem);                                        \
-	++(da).size;                                                          \
+	memset((da).data, 0, (da).size * sizeof((da).data[0]));               \
+	(da).size = 0;                                                        \
 } while (0)
 
 /**
@@ -172,7 +245,7 @@ do {                                                                          \
  * @param         it  	An iterator for the given array.
  * @param         elem	The object to insert into the array.
  *
- * @see `da_iter_t`
+ * @see `da_iter_type`
  * @see	`DA_BEGIN`
  * @see	`DA_END`
  */
@@ -187,41 +260,19 @@ do {                                                                          \
 		exit(1);                                                      \
 	}                                                                     \
 	if ((da).size >= (da).capacity) {                                     \
-		DA_RESERVE(da, (size_t)((da).capacity * DA_SCALE_FACTOR) + 1);\
+		DA_RESERVE(da, (size_t)((da).capacity * DA_FACTOR) + DA_BIAS);\
 	}                                                                     \
 	/* shift elements */                                                  \
 	if ((it) < DA_END(da)) {                                              \
 		void* dst = (it) + 1;                                         \
 		void* src = it;                                               \
-		size_t elem_count = ((da).data + (da).capacity - 1) - (it);   \
+		ptrdiff_t elem_count = ((da).data + (da).capacity - 1) - (it);\
 		size_t num_bytes = elem_count * sizeof((da).data[0]);         \
 		memmove(dst, src, num_bytes);                                 \
 	}                                                                     \
 	/* insert new element */                                              \
-	*(it) = (elem);                                                       \
+	(*(it)) = (elem);                                                     \
 	++(da).size;                                                          \
-} while (0)
-
-/**
- * Array access with bounds checking.
- *
- * @param         da  	A dynamic array object.
- * @param         idx	The index of the new element.
- */
-#define DA_AT(da, idx)                                                        \
-	((idx) >= (da).capacity) ?                                            \
-	fprintf(stderr, "da: at: out of bounds\n"), exit(1), 0 :              \
-	(da).data[idx]
-
-/**
- * Clears the array, setting the size to 0, without free'ing memory.
- *
- * @param         da  	A dynamic array object.
- */
-#define DA_CLEAR(da)                                                          \
-do {                                                                          \
-	memset((da).data, 0, (da).size * sizeof((da).data[0]));               \
-	(da).size = 0;                                                        \
 } while (0)
 
 /**
@@ -230,7 +281,7 @@ do {                                                                          \
  * @param         da 	A dynamic array object.
  * @param         it 	An iterator for the given array.
  *
- * @see `da_iter_t`
+ * @see `da_iter_type`
  * @see	`DA_BEGIN`
  * @see	`DA_END`
  */
@@ -258,38 +309,28 @@ do {                                                                          \
 } while (0)
 
 /**
- * Reserves additional space for the underlying array.
+ * Appends a new element to the dynamic array, resizing if necessary.
  *
- * If `sz` is not greater than the current capacity, this macro does nothing.
+ * NOTE: If a resize occurs, all pointers will be invalidated..
  *
- * NOTE: This will invalidate all pointers to elements in the array.
+ * @param         da  	A dynamic array object.
+ * @param         elem	The object to insert into the array.
  *
- * @param         da	A dynamic array object.
- * @param         sz	The new size of the array.
+ * @see	`DA_RESERVE`
  */
-#define DA_RESERVE(da, sz)                                                    \
+#define DA_PUSH_BACK(da, elem)                                                \
 do {                                                                          \
-	if ((sz) == 0) {                                                      \
-		fprintf(stderr, "da: reserve: size cannot be zero\n");        \
-		exit(1);                                                      \
+	if ((da).size == (da).capacity) {                                     \
+		DA_RESERVE(da, (size_t)((da).capacity * DA_FACTOR) + DA_BIAS);\
 	}                                                                     \
-	/* reserve cannot shrink array */                                     \
-	if (sz <= (da).capacity) {                                            \
-		break;                                                        \
-	}                                                                     \
-	(da).data = realloc((da).data, (sz) * sizeof((da).data[0]));          \
-	if ((da).data == NULL) {                                              \
-		fprintf(stderr, "da: reserve: out of memory\n");              \
-		exit(1);                                                      \
-	}                                                                     \
-	/* new elements are left un-initialised */                            \
-	(da).capacity = (sz);                                                 \
+	(da).data[(da).size] = (elem);                                        \
+	++(da).size;                                                          \
 } while (0)
 
 /**
  * Resizes the underlying array, zero'ing extra elements if necessary.
  *
- * If `sz` is equal to the current capacity, this macro does nothing.
+ * If `sz` is equal to the size capacity, this macro does nothing.
  *
  * NOTE: This will invalidate all pointers to elements in the array.
  *
@@ -302,10 +343,13 @@ do {                                                                          \
 		fprintf(stderr, "da: resize: size cannot be zero\n");         \
 		exit(1);                                                      \
 	}                                                                     \
-	if (sz == (da).capacity) {                                            \
+	if ((sz) == (da).size) {                                              \
 		break;                                                        \
 	}                                                                     \
-	(da).data = realloc((da).data, (sz) * sizeof((da).data[0]));          \
+	/* only reallocate if required */                                     \
+	if ((sz) > (da).capacity) {                                           \
+		(da).data = realloc((da).data, (sz) * sizeof((da).data[0]));  \
+	}                                                                     \
 	if ((da).data == NULL) {                                              \
 		fprintf(stderr, "da: resize: out of memory\n");               \
 		exit(1);                                                      \

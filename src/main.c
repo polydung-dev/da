@@ -37,7 +37,7 @@ int    test_erase_data[] = {0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15};
 size_t test_erase_size   = ARRAY_SIZE(test_erase_data);
 
 int main(void) {
-	da_t(int) da;
+	da_type(int) da;
 	DA_CREATE(da);
 
 	DA_RESIZE(da, 4);
@@ -93,7 +93,7 @@ int main(void) {
 	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%02x");
 	PRINT_ARRAY(test_iterators_data, test_iterators_size, "%02x");
 
-	for (da_iter_t(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
+	for (da_iter_type(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
 		printf("%02x", *it);
 
 		if (it < (DA_END(da) - 1)) {
@@ -110,7 +110,7 @@ int main(void) {
 		DA_PUSH_BACK(da, i);
 	}
 
-	for (da_iter_t(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
+	for (da_iter_type(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
 		switch (*it) {
 			case 4:
 			case 13:
