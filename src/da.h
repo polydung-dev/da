@@ -54,7 +54,7 @@ struct {                                                                      \
  *
  * @param         da	A dynamic array object.
  */
-#define da_iter_t(da) size_t
+#define da_iter_t(da) __typeof__((da).data[0])*
 
 /**
  * Access to the underlying array.
@@ -96,14 +96,14 @@ struct {                                                                      \
  *
  * @param         da	A dynamic array object.
  */
-#define DA_BEGIN(da)    0
+#define DA_BEGIN(da)    (da).data
 
 /**
  * Iterator point past the last element in the array.
  *
  * @param         da	A dynamic array object.
  */
-#define DA_END(da)      (da).size
+#define DA_END(da)      ((da).data + (da).size)
 
 /**
  * Allocates the initial chunk of memory for the array.
@@ -166,32 +166,39 @@ do {                                                                          \
 } while (0)
 
 /**
- * Inserts an element into the array such that it's index is equal to `idx`.
+ * Inserts an element into the array at the point before the iterator.
  *
  * @param         da  	A dynamic array object.
+ * @param         it  	An iterator for the given array.
  * @param         elem	The object to insert into the array.
- * @param         idx	The index of the new element.
+ *
+ * @see `da_iter_t`
+ * @see	`DA_BEGIN`
+ * @see	`DA_END`
  */
-#define DA_INSERT(da, elem, idx)                                              \
+#define DA_INSERT(da, it, elem)                                               \
 do {                                                                          \
-	if ((idx) > (da).size) {                                              \
+	if ((it) < DA_BEGIN(da) || (it) > DA_END(da)) {                       \
+		fprintf(stderr, "da: insert: invalid iterator\n");            \
+		exit(1);                                                      \
+	}                                                                     \
+	if ((it) > ((da).data + (da).capacity)) {                             \
 		fprintf(stderr, "da: insert: out of bounds\n");               \
 		exit(1);                                                      \
 	}                                                                     \
-	/* array is already full */                                           \
 	if ((da).size >= (da).capacity) {                                     \
 		DA_RESERVE(da, (size_t)((da).capacity * DA_SCALE_FACTOR) + 1);\
 	}                                                                     \
 	/* shift elements */                                                  \
-	if ((idx) < (da).size) {                                              \
-		void* dst = &(da).data[(idx) + 1];                            \
-		void* src = &(da).data[idx];                                  \
-		size_t elem_count = (da).size - (idx);                        \
+	if ((it) < DA_END(da)) {                                              \
+		void* dst = (it) + 1;                                         \
+		void* src = it;                                               \
+		size_t elem_count = ((da).data + (da).capacity - 1) - (it);   \
 		size_t num_bytes = elem_count * sizeof((da).data[0]);         \
 		memmove(dst, src, num_bytes);                                 \
 	}                                                                     \
 	/* insert new element */                                              \
-	(da).data[(idx)] = (elem);                                            \
+	*(it) = (elem);                                                       \
 	++(da).size;                                                          \
 } while (0)
 
@@ -218,28 +225,36 @@ do {                                                                          \
 } while (0)
 
 /**
- * Erases an element from the dynamic array.
+ * Erases the element referenced by the iterator from the array
  *
  * @param         da 	A dynamic array object.
- * @param         idx	The index of the element to erase.
+ * @param         it 	An iterator for the given array.
+ *
+ * @see `da_iter_t`
+ * @see	`DA_BEGIN`
+ * @see	`DA_END`
  */
-#define DA_ERASE(da, idx)                                                     \
+#define DA_ERASE(da, it)                                                      \
 do {                                                                          \
-	if ((idx) >= (da).size) {                                             \
-		fprintf(stderr, "da: erase: out of bounds\n");                \
+	if ((it) < DA_BEGIN(da) || (it) > DA_END(da)) {                       \
+		fprintf(stderr, "da: insert: invalid iterator\n");            \
+		exit(1);                                                      \
+	}                                                                     \
+	if ((it) > ((da).data + (da).capacity)) {                             \
+		fprintf(stderr, "da: insert: out of bounds\n");               \
 		exit(1);                                                      \
 	}                                                                     \
 	/* shift elements */                                                  \
-	if ((idx) < ((da).size - 1)) {                                        \
-		void* dst = &(da).data[idx];                                  \
-		void* src = &(da).data[(idx) + 1];                            \
-		size_t elem_count = ((da).size - 1) - (idx);                  \
+	if ((it) < DA_END(da)) {                                              \
+		void* dst = it;                                               \
+		void* src = (it) + 1;                                         \
+		size_t elem_count = ((da).data + (da).capacity - 1) - (it);   \
 		size_t num_bytes = elem_count * sizeof((da).data[0]);         \
 		memmove(dst, src, num_bytes);                                 \
 	}                                                                     \
-	--(da).size;                                                          \
 	/* zero memory of last element */                                     \
-	memset(&(da).data[(da).size], 0, sizeof((da).data[0]));               \
+	memset(&DA_BACK(da), 0, sizeof((da).data[0]));                        \
+	--(da).size;                                                          \
 } while (0)
 
 /**

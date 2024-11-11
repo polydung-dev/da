@@ -30,8 +30,8 @@ size_t test_insert_size   = ARRAY_SIZE(test_insert_data);
 int    test_clear_insert_data[] = {69};
 size_t test_clear_insert_size   = ARRAY_SIZE(test_clear_insert_data);
 
-int    test_insert_at_end_data[] = {0xde, 0xad, 0xbe, 0xef};
-size_t test_insert_at_end_size   = ARRAY_SIZE(test_insert_at_end_data);
+int    test_iterators_data[] = {0xde, 0xad, 0xbe, 0xef};
+size_t test_iterators_size   = ARRAY_SIZE(test_iterators_data);
 
 int    test_erase_data[] = {0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15};
 size_t test_erase_size   = ARRAY_SIZE(test_erase_data);
@@ -63,9 +63,9 @@ int main(void) {
 	PRINT_ARRAY(test_append_data, test_append_size, "%2i");
 	printf("---\n");
 
-	DA_INSERT(da, 7, 1);
-	DA_INSERT(da, 4, 2);
-	DA_INSERT(da, 6, 9);
+	DA_INSERT(da, DA_BEGIN(da) + 1, 7);
+	DA_INSERT(da, DA_BEGIN(da) + 2, 4);
+	DA_INSERT(da, DA_BEGIN(da) + 9, 6);
 
 	printf("Test: insert\n");
 	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
@@ -74,7 +74,7 @@ int main(void) {
 
 	DA_RESIZE(da, 1);
 	DA_CLEAR(da);
-	DA_INSERT(da, 69, DA_END(da));
+	DA_INSERT(da, DA_END(da), 69);
 
 	printf("Test: clear & insert at end\n");
 	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
@@ -85,18 +85,18 @@ int main(void) {
 	DA_CREATE(da);
 
 	DA_PUSH_BACK(da, 0xad);
-	DA_INSERT(da, DA_FRONT(da) + 0x31, DA_BEGIN(da));
+	DA_INSERT(da, DA_BEGIN(da), DA_FRONT(da) + 0x31);
 	DA_PUSH_BACK(da, 0xef);
-	DA_INSERT(da, DA_BACK(da) - 0x31, DA_END(da) - 1);
+	DA_INSERT(da, DA_END(da) - 1, DA_BACK(da) - 0x31);
 
 	printf("Test: \"iterators\"\n");
 	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%02x");
-	PRINT_ARRAY(test_insert_at_end_data, test_insert_at_end_size, "%02x");
+	PRINT_ARRAY(test_iterators_data, test_iterators_size, "%02x");
 
-	for (da_iter_t(da) i = 0; i != DA_END(da); ++i) {
-		printf("%02x", DA_AT(da, i));
+	for (da_iter_t(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
+		printf("%02x", *it);
 
-		if (i < (DA_END(da) - 1)) {
+		if (it < (DA_END(da) - 1)) {
 			printf(", ");
 		}
 	}
@@ -106,17 +106,18 @@ int main(void) {
 
 	DA_CLEAR(da);
 
-	for (da_iter_t(da) it = 0; it < 16 ; ++it) {
-		DA_PUSH_BACK(da, it);
+	for (int i = 0; i < 16; ++i) {
+		DA_PUSH_BACK(da, i);
 	}
 
-	for (size_t i = 0; i < DA_SIZE(da); ++i) {
-		switch (DA_AT(da, i)) {
+	for (da_iter_t(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
+		switch (*it) {
 			case 4:
 			case 13:
-				DA_ERASE(da, i);
+				DA_ERASE(da, it);
 		};
 	}
+
 	printf("Test: erase\n");
 	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
 	PRINT_ARRAY(test_erase_data, test_erase_size, "%2i");
