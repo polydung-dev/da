@@ -1,126 +1,263 @@
+#include <ctype.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include "da.h"
 
-#define ARRAY_SIZE(arr) sizeof(arr) / sizeof(arr[0])
-
-#define PRINT_ARRAY(arr, sz, fmt)           \
-do {                                        \
-	for (size_t i = 0; i < (sz); ++i) { \
-		printf(fmt, arr[i]);        \
-		if (i < (sz) - 1) {         \
-			printf(", ");       \
-		}                           \
-	}                                   \
-	printf("\n");                       \
+#define DA_PRINT(da)                                                          \
+do {                                                                          \
+	printf("[");                                                          \
+	for (da_iter_type(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {    \
+		printf("%i", *it);                                            \
+		if ((it + 1) != DA_END(da)) {                                 \
+			printf(", ");                                         \
+		}                                                             \
+	}                                                                     \
+	printf("]\n");                                                        \
 } while (0)
 
-int    test_expand_append_data[] = {0, 0, 0, 0, 42};
-size_t test_expand_append_size   = ARRAY_SIZE(test_expand_append_data);
-
-int    test_reserve_data[] = {0, 0, 0, 0, 42};
-size_t test_reserve_size   = ARRAY_SIZE(test_reserve_data);
-
-int    test_append_data[] = {0, 0, 0, 0, 42, 5, 6, 7};
-size_t test_append_size   = ARRAY_SIZE(test_append_data);
-
-int    test_insert_data[] = {0, 7, 4, 0, 0, 0, 42, 5, 6, 6, 7};
-size_t test_insert_size   = ARRAY_SIZE(test_insert_data);
-
-int    test_clear_insert_data[] = {69};
-size_t test_clear_insert_size   = ARRAY_SIZE(test_clear_insert_data);
-
-int    test_insert_at_end_data[] = {0xde, 0xad, 0xbe, 0xef};
-size_t test_insert_at_end_size   = ARRAY_SIZE(test_insert_at_end_data);
-
-int    test_erase_data[] = {0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15};
-size_t test_erase_size   = ARRAY_SIZE(test_erase_data);
 
 int main(void) {
-	da_t(int) da;
+	/** "demo" ***********************************************************/
+	da_type(char) da;
 	DA_CREATE(da);
+	/* manually modyfying array; todo, add a copy/assign function? */
+	/* note: assumes ascii */
+	free(da.data);
+	DA_DATA(da) = strdup("ifmmp xxpsme");
+	DA_SIZE(da) = strlen(da.data) + 1;
+	DA_CAPACITY(da) = da.size;
 
-	DA_RESIZE(da, 4);
-	DA_PUSH_BACK(da, 42);
-
-	printf("Test: resize(expand) & push_back 1\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_expand_append_data, test_expand_append_size, "%2i");
-	printf("---\n");
-
-	DA_RESERVE(da, 8);
-
-	printf("Test: reserve\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_reserve_data, test_reserve_size, "%2i");
-	printf("---\n");
-
-	for (size_t i = DA_SIZE(da); i < DA_CAPACITY(da); ++i)
-		DA_PUSH_BACK(da, i);
-
-	printf("Test: push_back\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_append_data, test_append_size, "%2i");
-	printf("---\n");
-
-	DA_INSERT(da, 7, 1);
-	DA_INSERT(da, 4, 2);
-	DA_INSERT(da, 6, 9);
-
-	printf("Test: insert\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_insert_data, test_insert_size, "%2i");
-	printf("---\n");
-
-	DA_RESIZE(da, 1);
-	DA_CLEAR(da);
-	DA_INSERT(da, 69, DA_END(da));
-
-	printf("Test: clear & insert at end\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_clear_insert_data, test_clear_insert_size, "%2i");
-	printf("---\n");
-
-	DA_DESTROY(da);
-	DA_CREATE(da);
-
-	DA_PUSH_BACK(da, 0xad);
-	DA_INSERT(da, DA_FRONT(da) + 0x31, DA_BEGIN(da));
-	DA_PUSH_BACK(da, 0xef);
-	DA_INSERT(da, DA_BACK(da) - 0x31, DA_END(da) - 1);
-
-	printf("Test: \"iterators\"\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%02x");
-	PRINT_ARRAY(test_insert_at_end_data, test_insert_at_end_size, "%02x");
-
-	for (da_iter_t(da) i = 0; i != DA_END(da); ++i) {
-		printf("%02x", DA_AT(da, i));
-
-		if (i < (DA_END(da) - 1)) {
-			printf(", ");
+	for (da_iter_type(da) it = DA_BEGIN(da); it != DA_END(da); ++it) {
+		if (isalpha(*it)) {
+			--*it;
 		}
 	}
-	printf("\n");
 
-	printf("---\n");
+	DA_FRONT(da) = toupper(DA_GET(da, 0));
+
+	/* reserve extra space so iterator is not invalidated */
+	DA_RESERVE(da, DA_SIZE(da) + 2);
+	da_iter_type(da) it = DA_BEGIN(da) + 6;
+	DA_SET(da, 6, toupper(*(it)));
+	DA_INSERT(da, it - 1, ',');
+	DA_ERASE(da, it + 2);
+	DA_BACK(da) = '!';
+	DA_PUSH_BACK(da, '\0');
+
+	printf("%s\n", da.data);
 
 	DA_CLEAR(da);
-
-	for (da_iter_t(da) it = 0; it < 16 ; ++it) {
-		DA_PUSH_BACK(da, it);
+	if (!DA_EMPTY(da)) {
+		printf("clear / empty fault\n");
 	}
 
-	for (size_t i = 0; i < DA_SIZE(da); ++i) {
-		switch (DA_AT(da, i)) {
-			case 4:
-			case 13:
-				DA_ERASE(da, i);
-		};
+	DA_DESTROY(da);
+
+	/** error testing ****************************************************/
+	DA_CREATE(da);
+	DA_PUSH_BACK(da, 6 * 9);
+	int res = 0;
+	int val = 69;
+
+	/** DA_SET ***********************************************************/
+	printf("---------- DA_SET ----------------------------------------\n");
+	DA_SET(da, 42, val);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_SET");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
 	}
-	printf("Test: erase\n");
-	PRINT_ARRAY(DA_DATA(da), DA_SIZE(da), "%2i");
-	PRINT_ARRAY(test_erase_data, test_erase_size, "%2i");
-	printf("---\n");
+	printf(" out of bounds (too high)\n");
+
+	DA_SET(da, -42, val);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_SET");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (negative)\n");
+
+	DA_SET(da, 0, val);
+	// DA_PRINT(da);
+	res = DA_GET(da, 0);
+	if (DA_ERRNO(da) == DA_SUCCESS && res == val) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_SET");
+		printf("[ fail ]");
+	}
+	printf(" set & reset errno\n");
+
+	/** DA_GET ***********************************************************/
+	printf("---------- DA_GET ----------------------------------------\n");
+	res = DA_GET(da, 42);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS && res == DA_ZERO) {
+		DA_PERROR(da, "DA_GET");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (too high)\n");
+
+	res = DA_GET(da, -42);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS && res == DA_ZERO) {
+		DA_PERROR(da, "DA_GET");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (negative)\n");
+
+	res = DA_GET(da, 0);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && res == val) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_GET");
+		printf("[ fail ]");
+	}
+	printf(" get & reset errno\n");
+
+	/** DA_RESERVE *******************************************************/
+	printf("---------- DA_RESERVE ------------------------------------\n");
+	DA_RESERVE(da, 0);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_INVALID_SIZE) {
+		DA_PERROR(da, "DA_RESERVE");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" zero size\n");
+
+	DA_RESERVE(da, 5);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && da.capacity >= 5) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_RESERVE");
+		printf("[ fail ]");
+	}
+	printf(" reserve & reset errno\n");
+
+	/** DA_RESIZE ********************************************************/
+	printf("---------- DA_RESIZE -------------------------------------\n");
+	DA_RESIZE(da, 0);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_INVALID_SIZE) {
+		DA_PERROR(da, "DA_RESIZE");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" zero size\n");
+
+	DA_RESIZE(da, 9);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && (da.size == 9)) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_RESIZE");
+		printf("[ fail ]");
+	}
+	printf(" grow array\n");
+
+	DA_RESIZE(da, 6);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && (da.size == 6)) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_RESIZE");
+		printf("[ fail ]");
+	}
+	printf(" shrink array\n");
+
+	/** DA_INSERT ********************************************************/
+	printf("---------- DA_INSERT -------------------------------------\n");
+	DA_INSERT(da, DA_BEGIN(da) + 69, 42);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_INSERT");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (too high)\n");
+
+	DA_INSERT(da, DA_BEGIN(da) - 69, 42);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_INSERT");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (negative)\n");
+
+	DA_INSERT(da, DA_BEGIN(da), (val - 42));
+	res = DA_FRONT(da);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && res == (val - 42)) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_INSERT");
+		printf("[ fail ]");
+	}
+	printf(" insert & reset errno\n");
+
+	/** DA_ERASE *********************************************************/
+	printf("---------- DA_ERASE --------------------------------------\n");
+	DA_ERASE(da, DA_BEGIN(da) + 69);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_ERASE");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (too high)\n");
+
+	DA_ERASE(da, DA_BEGIN(da) - 69);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_OUT_OF_BOUNDS) {
+		DA_PERROR(da, "DA_ERASE");
+		printf("[ pass ]");
+	} else {
+		printf("[ fail ]");
+	}
+	printf(" out of bounds (negative)\n");
+
+	for (da_iter_type(da) it = &DA_BACK(da); it != DA_BEGIN(da); --it) {
+		DA_ERASE(da, it);
+	}
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && (DA_SIZE(da) == 1)) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_ERASE");
+		printf("[ fail ]");
+	}
+	printf(" erase & reset errno\n");
+
+	/** DA_PUSH_BACK *****************************************************/
+	printf("---------- DA_PUSH_BACK ----------------------------------\n");
+	DA_PUSH_BACK(da, val);
+	res = DA_BACK(da);
+	// DA_PRINT(da);
+	if (DA_ERRNO(da) == DA_SUCCESS && res == val) {
+		printf("[ pass ]");
+	} else {
+		DA_PERROR(da, "DA_ERASE");
+		printf("[ fail ]");
+	}
+	printf(" push_back\n");
 
 	DA_DESTROY(da);
 
