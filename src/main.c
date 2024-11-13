@@ -234,7 +234,7 @@ int main(void) {
 	}
 	printf(" out of bounds (negative)\n");
 
-	for (da_iter_type(da) it = DA_END(da); it != DA_BEGIN(da) + 1; --it) {
+	for (da_iter_type(da) it = &DA_BACK(da); it != DA_BEGIN(da); --it) {
 		DA_ERASE(da, it);
 	}
 	// DA_PRINT(da);

@@ -410,12 +410,12 @@ do {                                                                          \
  */
 #define DA_ERASE(da, it)                                                      \
 do {                                                                          \
-	if ((it) < DA_BEGIN(da) || (it) > DA_END(da)) {                       \
+	if ((it) < DA_BEGIN(da) || (it) >= DA_END(da)) {                      \
 		DA_SET_ERROR(da, DA_OUT_OF_BOUNDS);                           \
 		break;                                                        \
 	}                                                                     \
 	/* shift elements */                                                  \
-	if ((it) < DA_END(da)) {                                              \
+	if ((it) < &DA_BACK(da)) {                                            \
 		void* dst = it;                                               \
 		void* src = (it) + 1;                                         \
 		size_t elem_count = ((da).data + (da).capacity - 1) - (it);   \
