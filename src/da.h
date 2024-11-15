@@ -52,12 +52,12 @@ typedef enum {
 } da_errno_type;
 
 /**
- * Returns the errno for the given dynamic array.
+ * Returns the errnum for the given dynamic array.
  */
-#define DA_ERRNO(da) (da).errno
+#define DA_ERRNO(da) (da).errnum
 
 /**
- * Converts an errno value to a string
+ * Converts an errnum value to a string
  *
  * @param         err	error value
  */
@@ -79,34 +79,34 @@ typedef enum {
 do {                                                                          \
 	if (prefix == NULL) {                                                 \
 		char* s = "error: %s @ %s:%i\n";                              \
-		printf(s, DA_STRERROR((da).errno), (da).file, (da).line);     \
+		printf(s, DA_STRERROR((da).errnum), (da).file, (da).line);    \
 		break;                                                        \
 	}                                                                     \
 	char* s = "error: %s: %s @ %s:%i\n";                                  \
-	printf(s, prefix, DA_STRERROR((da).errno), (da).file, (da).line);     \
+	printf(s, prefix, DA_STRERROR((da).errnum), (da).file, (da).line);    \
 } while (0)
 
 /**
- * Sets the errno and error message for the given dynamic array.
+ * Sets the errnum and error message for the given dynamic array.
  *
  * @param         da 	dynamic array
- * @param         err	errno value
+ * @param         err	errnum value
  */
 #define DA_SET_ERROR(da, err)                                                 \
 do {                                                                          \
-	(da).errno = err;                                                     \
+	(da).errnum = err;                                                    \
 	(da).file = __FILE__;                                                 \
 	(da).line = __LINE__;                                                 \
 } while (0)
 
 /**
- * Clears the errno and error message for the given dynamic array.
+ * Clears the errnum and error message for the given dynamic array.
  *
  * @param         da 	dynamic array
  */
 #define DA_CLEAR_ERROR(da)                                                    \
 do {                                                                          \
- 	(da).errno = DA_SUCCESS;                                              \
+ 	(da).errnum = DA_SUCCESS;                                             \
 	(da).file = NULL;                                                     \
 	(da).line = 0;                                                        \
 } while (0)
@@ -124,7 +124,7 @@ struct {                                                                      \
 	size_t size;                                                          \
 	size_t capacity;                                                      \
 	/* for error reporting */                                             \
-	da_errno_type errno;                                                  \
+	da_errno_type errnum;                                                 \
 	char* file;                                                           \
 	int line;                                                             \
 }
@@ -150,7 +150,7 @@ do {                                                                          \
 	(da).data = calloc(DA_INITIAL_CAPACITY, sizeof((da).data[0]));        \
 	(da).size = 0;                                                        \
 	(da).capacity = DA_INITIAL_CAPACITY;                                  \
-	(da).errno = DA_SUCCESS;                                              \
+	(da).errnum = DA_SUCCESS;                                             \
 	(da).file = NULL;                                                     \
 	(da).line = 0;                                                        \
 	if ((da).data == NULL) {                                              \
@@ -176,7 +176,7 @@ do {                                                                          \
 	(da).data = NULL;                                                     \
 	(da).size = 0;                                                        \
 	(da).capacity = 0;                                                    \
-	(da).errno = DA_SUCCESS;                                              \
+	(da).errnum = DA_SUCCESS;                                             \
 	(da).file = NULL;                                                     \
 	(da).line = 0;                                                        \
 } while (0)
@@ -201,12 +201,12 @@ do {                                                                          \
 		/* size_t is unsigned */                                      \
 		(size_t)(idx) >= (da).size                                    \
 	) ? (                                                                 \
-		((da).errno = DA_OUT_OF_BOUNDS),                              \
+		((da).errnum = DA_OUT_OF_BOUNDS),                             \
 		((da).file = __FILE__),                                       \
 		((da).line = __LINE__),                                       \
 		DA_ZERO                                                       \
 	) : (                                                                 \
-		((da).errno = DA_SUCCESS),                                    \
+		((da).errnum = DA_SUCCESS),                                   \
 		((da).file = NULL),                                           \
 		((da).line = 0),                                              \
 		(da).data[idx]                                                \
@@ -374,8 +374,8 @@ do {                                                                          \
 	}                                                                     \
 	if ((da).size >= (da).capacity) {                                     \
 		DA_RESERVE(da, (size_t)((da).capacity * DA_FACTOR) + DA_BIAS);\
-		/* passthrough errno */                                       \
-		if ((da).errno != DA_SUCCESS) {                               \
+		/* passthrough errnum */                                      \
+		if ((da).errnum != DA_SUCCESS) {                              \
 			break;                                                \
 		}                                                             \
 	}                                                                     \
@@ -446,8 +446,8 @@ do {                                                                          \
 do {                                                                          \
 	if ((da).size == (da).capacity) {                                     \
 		DA_RESERVE(da, (size_t)((da).capacity * DA_FACTOR) + DA_BIAS);\
-		/* passthrough errno */                                       \
-		if ((da).errno != DA_SUCCESS) {                               \
+		/* passthrough errnum */                                      \
+		if ((da).errnum != DA_SUCCESS) {                              \
 			break;                                                \
 		}                                                             \
 	}                                                                     \
